@@ -9,16 +9,40 @@ Son los originales que hacen falta para poder regenerar los assets optimizados.
 |---|---|
 | `portrait-raw.png` | **Master del retrato 3D.** 1254×1254, RGB sin alpha, fondo negro puro. Es el PNG original sin procesar. |
 | `portrait-alpha.png` | Máscara de recorte del retrato, 990×1091 en escala de grises. Sale del recorte que hizo el export de Design; es lo que separa la cabeza del fondo negro. |
+| `projects/*.png` | **Masters de las 8 capturas de proyectos.** Son los PNG originales, de 3,6 MB en total. |
 
-El retrato que se sirve es `public/portrait/axel-portrait.webp` (996×1094, 521 KB).
+Lo que se sirve sale de acá: `public/portrait/axel-portrait.webp` (996×1094, 521 KB)
+y `public/projects/*.webp` (8 archivos, 608 KB en total).
+
+## Cómo se regenera todo
+
+Los dos scripts de `scripts/` reproducen los archivos servidos **byte a byte**.
+Si cambiás algún parámetro, actualizá también esta tabla.
+
+```bash
+npm i -D sharp            # sharp entra igual como dependencia opcional de next
+node scripts/regen-portrait.js    # assets/portrait-*.png -> public/portrait/
+node scripts/convert-images.js    # assets/projects/*.png -> public/projects/
+```
+
+| salida | origen | parámetros |
+|---|---|---|
+| `public/portrait/axel-portrait.webp` | `portrait-raw.png` + `portrait-alpha.png` | WebP `nearLossless`, `quality: 60`, `effort: 6`, `alphaQuality: 100` |
+| `public/projects/*.webp` | `assets/projects/*.png` | WebP `quality: 90`, `effort: 6`, sin reescalar |
+| `public/decor/*.webp` | se descargan de `shrug-person-78902957.figma.site` | WebP `quality: 82`, `effort: 6`, ancho máximo 640 |
+
+Ojo con las decorativas: **no hay master local**, el script las baja del dominio de
+Figma cada vez. Si ese dominio muere, las WebP de `public/decor/` pasan a ser las
+únicas copias.
 
 ## Cómo se regenera el WebP del retrato
 
 El RGB sale del master y el alpha de la máscara. Las dos cajas están alineadas 1:1,
 así que no hay ningún reescalado: el contenido mide 990×1091 en ambos.
 
+Es lo que hace `scripts/regen-portrait.js`, escrito acá para que quede legible:
+
 ```js
-// node -e "..." desde la raíz del proyecto, con sharp ya instalado
 const sharp = require("sharp");
 
 const alpha = await sharp("assets/portrait-alpha.png").toBuffer();
@@ -34,8 +58,8 @@ await sharp(rgb)
   .toFile("public/portrait/axel-portrait.webp");
 ```
 
-Estos parámetros exactos reproducen el archivo servido **byte a byte**
-(`sha256` de los primeros 16 hex: `c91ac9ea12e42c7f`).
+Verificado: el `sha256` del resultado empieza en `c91ac9ea12e42c7f`, igual que el
+archivo que está commiteado.
 
 ### Por qué estos parámetros
 
@@ -58,7 +82,15 @@ Como contrapartida, todos los dispositivos bajan los mismos 521 KB.
 
 ## Lo que no está acá
 
-Los PNG originales de las capturas de proyectos se borraron: las versiones WebP de
-`public/projects/` son ahora las únicas copias. Si hace falta volver a los originales,
-están en el commit `70b24f9` ("Estado inicial"), junto con el export completo de
-Claude Design (`.dc.html`, `support.js` y `data/*.js`).
+**El master del video.** `ap-demo.mp4` original pesaba 13,3 MB y no se guardó en el
+árbol; lo que se sirve es la versión recomprimida en `public/projects/ap-demo.mp4`
+(H.264 CRF 28, sin audio, ancho máximo 1000, `+faststart`). Volver a comprimirlo desde
+ahí sería una segunda pérdida, así que si hace falta otra calidad hay que sacar el
+original del commit `70b24f9`.
+
+**El export de Claude Design.** `.dc.html`, `support.js` y `data/*.js` también viven
+sólo en `70b24f9`. Hacen falta para correr los scripts de comparación de `scripts/`:
+
+```bash
+git checkout 70b24f9 -- "Axel Ostrovsky Portfolio.dc.html" support.js data assets/projects/ap-demo.mp4
+```

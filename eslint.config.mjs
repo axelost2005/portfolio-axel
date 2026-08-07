@@ -12,6 +12,11 @@ const eslintConfig = [
     ignores: [".next/**", "node_modules/**", "out/**", "next-env.d.ts"],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    // scripts/ son herramientas de Node en CommonJS, no código del sitio.
+    files: ["scripts/**/*.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
 ];
 
 export default eslintConfig;
