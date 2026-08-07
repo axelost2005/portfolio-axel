@@ -84,6 +84,7 @@ Estos sólo necesitan `:3457`.
 | `regen-portrait.js` | Rehace `public/portrait/axel-portrait.webp` desde los masters de `assets/`. |
 | `convert-images.js` | Rehace las 8 capturas de `public/projects/` desde `assets/projects/*.png` y baja las 4 decorativas. |
 | `portrait-analysis.js` | PSNR y SSIM del retrato contra `assets/portrait-raw.png`. El SSIM está implementado a mano (gaussiano 11×11, sigma 1,5). |
+| `make-og.js` | Rehace `public/og.jpg` a 1200×630. No recorta el sitio: recompone el hero en apaisado (título arriba, retrato al centro pegado abajo, tagline abajo a la izquierda) inyectando el layout sobre la página ya cargada, para usar la tipografía y los colores reales. Necesita el sitio en `:3457`. |
 
 Los dos primeros reproducen los archivos commiteados **byte a byte**; los parámetros y
 el porqué están en [`assets/README.md`](../assets/README.md).
