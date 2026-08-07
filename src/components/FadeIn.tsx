@@ -37,6 +37,12 @@ type FadeInProps = Omit<
   duration?: number;
   /** opacidad final: el export conservaba la opacidad base del elemento (_fadeTo) */
   toOpacity?: number;
+  /**
+   * Deja el elemento en su estado inicial sin animar. Lo usa el hero para no
+   * arrancar la entrada hasta tener la geometria definitiva; si la animacion
+   * empieza antes, el reajuste posterior se ve como un salto.
+   */
+  hold?: boolean;
 };
 
 /**
@@ -50,6 +56,7 @@ export default function FadeIn({
   x = 0,
   duration = 0.7,
   toOpacity = 1,
+  hold = false,
   children,
   ...rest
 }: FadeInProps) {
@@ -57,12 +64,31 @@ export default function FadeIn({
   const C = TAGS[as] as ElementType;
 
   // El export directamente no aplicaba fades con prefers-reduced-motion.
-  if (reduced) return <C {...rest}>{children}</C>;
+  //
+  // Va `initial` con el estado FINAL, no sin props. useReducedMotion() devuelve
+  // false en el render del server y en el primero del cliente, asi que para cuando
+  // pasa a true el elemento ya tiene escrito opacity:0 inline. Si en esa segunda
+  // pasada se renderiza sin initial ni animate, nadie lo borra y el elemento queda
+  // invisible para siempre. Le pasa a todos los FadeIn de la pagina, no solo al hero.
+  // Tiene que ser `animate`, no `initial`: initial solo corre al montar y aca el
+  // elemento ya esta montado con el opacity:0 puesto. duration 0 = sin animacion.
+  if (reduced) {
+    return (
+      <C
+        initial={false}
+        animate={{ opacity: toOpacity, x: 0, y: 0 }}
+        transition={{ duration: 0 }}
+        {...rest}
+      >
+        {children}
+      </C>
+    );
+  }
 
   return (
     <C
       initial={{ opacity: 0, x, y }}
-      whileInView={{ opacity: toOpacity, x: 0, y: 0 }}
+      whileInView={hold ? undefined : { opacity: toOpacity, x: 0, y: 0 }}
       viewport={{ once: true, margin: "50px", amount: 0 }}
       transition={{ duration, delay, ease: EASE }}
       {...rest}

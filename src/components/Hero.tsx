@@ -31,6 +31,8 @@ export default function Hero() {
   const portraitRef = useRef<HTMLDivElement>(null);
 
   const [sway, setSway] = useState(false);
+  /** Hasta que no este, el hero se queda quieto en su estado inicial. */
+  const [ready, setReady] = useState(false);
 
   /** Port de fitHeadings(). */
   const fitHeading = useCallback(() => {
@@ -67,16 +69,15 @@ export default function Hero() {
     const navEl = navRef.current;
     const h1 = h1Ref.current;
     if (!gapEl || !portrait || !navEl || !h1) return;
-    const parent = gapEl.parentElement;
-    if (!parent) return;
 
     gapEl.style.height = "0px";
-    const heroTop = parent.getBoundingClientRect().top;
+    // offsetTop/offsetHeight dan la caja de LAYOUT. getBoundingClientRect() da la
+    // visual, que incluye el transform de la animacion de entrada: con el nav en
+    // y=-20 la banda salia 20px de mas y el gap 7px de mas (0.35 del error). Ese
+    // era el salto. Con offset* la medicion no depende del estado de la animacion.
+    // El heroTop del port se cancelaba solo: offsetParent ya es la <section>.
     const band =
-      portrait.getBoundingClientRect().top -
-      heroTop -
-      (navEl.getBoundingClientRect().bottom - heroTop) -
-      h1.getBoundingClientRect().height;
+      portrait.offsetTop - (navEl.offsetTop + navEl.offsetHeight) - h1.offsetHeight;
     const factor = window.innerWidth < 700 ? 0.14 : 0.35;
     gapEl.style.height = `${Math.max(12, Math.round(band * factor))}px`;
   }, []);
@@ -104,18 +105,35 @@ export default function Hero() {
     };
     window.addEventListener("resize", onResize, { passive: true });
 
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(() => {
-        fitHeading();
-        measureGap();
-      });
+    // Con reduced motion no hay fades que esperar: el hero se muestra ya. Va aca y
+    // no en el render justamente para no romper la hidratacion.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setReady(true);
     }
-    const t = window.setTimeout(() => {
+
+    // El hero se mide con la fuente ya cargada y recien ahi se sueltan los fades.
+    // El export reajustaba a los 1200ms: con Kanit por CDN eso caia antes de que
+    // el fade terminara, pero con next/font la fuente llega tan temprano que el
+    // reajuste quedaba despues de la animacion y se veia como un salto.
+    let alive = true;
+    const remeasure = () => {
+      if (!alive) return;
       fitHeading();
       measureGap();
-    }, 1200);
+      setReady(true);
+    };
+
+    // fonts.ready resuelve tambien si la fuente falla, asi que esta pasada corre
+    // siempre: es la unica que deja la geometria definitiva.
+    (document.fonts?.ready ?? Promise.resolve()).then(remeasure);
+
+    // Techo, solo para soltar la entrada. Si la fuente tarda mas que esto el hero
+    // aparece con la metrica de fallback y se corrige al llegar Kanit; preferible
+    // a dejarlo invisible esperando.
+    const t = window.setTimeout(remeasure, 1200);
 
     return () => {
+      alive = false;
       window.removeEventListener("resize", onResize);
       window.clearTimeout(t);
     };
@@ -129,12 +147,24 @@ export default function Hero() {
         display: "flex",
         flexDirection: "column",
         overflowX: "clip",
+        // Todo lo visible del hero ya arranca en opacity 0, asi que esto no cambia
+        // nada en pantalla. Sirve para el CLS: el reajuste de la metrica de la
+        // fuente mueve el h1 mientras todavia no se ve, y la spec de layout
+        // instability descarta lo que esta visibility:hidden pero no lo que esta
+        // en opacity 0. Sin esto el salto invisible puntuaba igual.
+        // Solo depende de `ready`, que arranca en false igual en el server y en el
+        // cliente. Si la condicion mirara algo que solo existe en el cliente (como
+        // matchMedia), el primer render no coincidiria con el SSR y React no repara
+        // el style inline al hidratar: el visibility:hidden quedaba pegado para
+        // siempre. El caso de reduced motion se resuelve en el efecto.
+        visibility: ready ? undefined : "hidden",
       }}
     >
       <FadeIn
         as="nav"
         ref={navRef}
         y={-20}
+        hold={!ready}
         style={{
           position: "relative",
           zIndex: 30,
@@ -204,7 +234,11 @@ export default function Hero() {
         </button>
       </FadeIn>
 
-      <div ref={gapRef} style={{ flex: "0 0 auto", height: "clamp(1rem, 4vh, 3.5rem)" }} />
+      <div
+        ref={gapRef}
+        data-hero-gap
+        style={{ flex: "0 0 auto", height: "clamp(1rem, 4vh, 3.5rem)" }}
+      />
 
       <div
         style={{
@@ -220,6 +254,7 @@ export default function Hero() {
             ref={h1Ref}
             delay={0.15}
             y={40}
+            hold={!ready}
             className="hero-heading"
             style={{
               margin: 0,
@@ -256,6 +291,7 @@ export default function Hero() {
           as="p"
           delay={0.35}
           y={20}
+          hold={!ready}
           style={{
             margin: 0,
             flex: "1 1 140px",
@@ -270,13 +306,14 @@ export default function Hero() {
         >
           {copy.hero.tagline}
         </FadeIn>
-        <FadeIn delay={0.5} y={20} style={{ flex: "0 0 auto", marginLeft: "auto" }}>
+        <FadeIn delay={0.5} y={20} hold={!ready} style={{ flex: "0 0 auto", marginLeft: "auto" }}>
           <ContactButton href={waHref} label={copy.buttons.contact} />
         </FadeIn>
       </div>
 
       <div
         ref={portraitRef}
+        data-hero-portrait
         style={{
           position: "absolute",
           left: "50%",
@@ -287,7 +324,7 @@ export default function Hero() {
           pointerEvents: "none",
         }}
       >
-        <FadeIn delay={0.6} y={30}>
+        <FadeIn delay={0.6} y={30} hold={!ready}>
           <div
             style={{
               transformOrigin: "50% 0%",
