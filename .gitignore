@@ -1,2 +1,12 @@
-uploads/
-.thumbnail
+node_modules/
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+.env*
+!.env.example
+
+.DS_Store
+.vercel
