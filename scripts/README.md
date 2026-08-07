@@ -74,6 +74,8 @@ Estos sólo necesitan `:3457`.
 | `verify-f4.js` | El idioma: detección por `navigator.language` en la primera visita, persistencia en `localStorage`, y que no haya flash de idioma incorrecto antes del primer paint. Instrumenta `navigator` antes de que corra cualquier script de la página. |
 | `verify-f5.js` | SEO: contenido del `<head>`, JSON-LD, y que `/og.jpg`, `/sitemap.xml`, `/robots.txt` y los iconos devuelvan 200. |
 | `smoke.js` | Errores de consola. |
+| `hero-timeline.js` | Geometría del hero frame por frame en recarga en frío con caché deshabilitada, más CLS acumulado. Colapsa los frames iguales, así que cada fila es un cambio de layout real. Compara cuándo se resuelve el layout contra cuándo arranca el fade: si el fade va primero, hay salto visible. `FONT_DELAY_MS=600` retrasa la fuente a propósito para abrir la ventana entre el primer paint y `fonts.ready`. |
+| `hero-regress.js` | Lo que el timeline no cubre: que con `prefers-reduced-motion` el hero se vea desde el primer frame, que al cambiar de idioma el h1 se reajuste al texto nuevo, que el resize vuelva a medir, y las alturas del resto de la página. |
 
 ## Regeneración de assets
 
