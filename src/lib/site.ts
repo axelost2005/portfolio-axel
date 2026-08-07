@@ -1,8 +1,8 @@
 /**
- * TODO: reemplazar por el dominio definitivo cuando esté.
+ * TODO: reemplazar por el dominio propio cuando esté. Por ahora es el de Vercel.
  * Lo consumen layout.tsx (metadataBase, Open Graph, JSON-LD), sitemap.ts y robots.ts.
  */
-export const SITE_URL = "https://axelostrovsky.vercel.app";
+export const SITE_URL = "https://portfolio-axel-theta.vercel.app";
 
 export const site = {
   url: SITE_URL,
